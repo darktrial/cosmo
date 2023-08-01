@@ -13,3 +13,13 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
+
+void MainWindow::on_pushButton_clicked()
+{
+    QStringList List;
+    List << "Clair de Lune" << "Reverie" << "Prelude";
+    ui->listWidget->addItem("fuck");
+}
+
+
+
