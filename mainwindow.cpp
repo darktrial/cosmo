@@ -22,8 +22,13 @@ MainWindow::~MainWindow()
 
 void MainWindow::on_pushButton_clicked()
 {
+    QTextCursor cursor=ui->textBrowser->textCursor();
+    QScrollBar *scrollbar=ui->textBrowser->verticalScrollBar();
+    cursor.clearSelection();
+    cursor.movePosition(QTextCursor::End);
+    ui->textBrowser->setTextCursor(cursor);
     ui->textBrowser->insertPlainText("H.264         I         1234566       1.16\n");
-    ui->textBrowser->verticalScrollBar()->setValue(ui->textBrowser->verticalScrollBar()->maximum());
+    scrollbar->setValue(scrollbar->maximum());
 
 }
 
