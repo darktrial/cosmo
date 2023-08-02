@@ -69,13 +69,15 @@ public:
   bool overTCP;
   int startRTSP(const char *url, bool overTCP, const char *username, const char *password);
   void stopRTSP();
-  void (*onConnectionSetup)(char *);
-  void (*onFrameData)(unsigned char *, const char *, unsigned, unsigned, struct timeval);
-  rtspPlayer()
+  void (*onConnectionSetup)(char *, void *);
+  void (*onFrameData)(unsigned char *, const char *, unsigned, unsigned, struct timeval, void *);
+  void *privateData;
+  rtspPlayer(void *data)
   {
     onFrameData = NULL;
     onConnectionSetup = NULL;
     overTCP=false;
+    privateData = data;
   }
   ~rtspPlayer()
   {

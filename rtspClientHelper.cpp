@@ -202,7 +202,7 @@ static void continueAfterSETUP(RTSPClient *rtspClient, int resultCode, char *res
     }
     if (((ourRTSPClient *)rtspClient)->player->onConnectionSetup != NULL)
     {
-      ((ourRTSPClient *)rtspClient)->player->onConnectionSetup((char *)(MediaSubsession *)scs.subsession->codecName());
+      ((ourRTSPClient *)rtspClient)->player->onConnectionSetup((char *)(MediaSubsession *)scs.subsession->codecName(), ((ourRTSPClient *)rtspClient)->player->privateData);
     }
     ((DummySink *)scs.subsession->sink)->player = ((ourRTSPClient *)rtspClient)->player;
     // env << *rtspClient << "Created a data sink for the \"" << *scs.subsession << "\" subsession\n";
@@ -420,7 +420,7 @@ void DummySink::afterGettingFrame(unsigned frameSize, unsigned numTruncatedBytes
   envir() << "\n";
 #endif
   if (this->player->onFrameData != NULL)
-    this->player->onFrameData(fReceiveBuffer, fSubsession.codecName(), frameSize, numTruncatedBytes, presentationTime);
+    this->player->onFrameData(fReceiveBuffer, fSubsession.codecName(), frameSize, numTruncatedBytes, presentationTime, this->player->privateData);
   continuePlaying();
 }
 
