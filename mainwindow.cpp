@@ -10,11 +10,12 @@ MainWindow::MainWindow(QWidget *parent)
     QStringList headers;
     headers << "Codec" << "Frame type" << "Frame size"<<"Time";
     ui->setupUi(this);
-    QHeaderView *heading=ui->tableWidget->horizontalHeader();
-    heading->setSectionResizeMode(QHeaderView::Stretch);
+    QHeaderView *hheading=ui->tableWidget->horizontalHeader();
+    QHeaderView *vheading=ui->tableWidget->verticalHeader();
+    hheading->setSectionResizeMode(QHeaderView::Stretch);
+    vheading->setVisible(false);
     ui->tableWidget->setColumnCount(4);
     ui->tableWidget->setHorizontalHeaderLabels(headers);
-    //ui->statusbar->showMessage("fuck");*/
 
 }
 
@@ -49,6 +50,10 @@ void MainWindow::on_pushButton_clicked()
     QTableWidgetItem *item=new QTableWidgetItem("12345");
     item->setTextAlignment(Qt::AlignCenter);
     ui->tableWidget->setItem(ui->tableWidget->rowCount()-1,0,item);//new QTableWidgetItem("12345",Qt::AlignCenter));
+    //QString colcount=QString("%1").arg(ui->tableWidget->rowCount());
+    //ui->statusbar->showMessage(colcount);
+    if (ui->tableWidget->rowCount()>10)
+        ui->tableWidget->removeRow(1);
 
 }
 
