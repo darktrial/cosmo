@@ -29,7 +29,7 @@
      </widget>
     </item>
     <item row="1" column="1" colspan="3">
-     <widget class="QTextEdit" name="textEdit">
+     <widget class="QTextEdit" name="urlText">
       <property name="minimumSize">
        <size>
         <width>30</width>
@@ -52,7 +52,7 @@
      </widget>
     </item>
     <item row="1" column="5">
-     <widget class="QTextEdit" name="textEdit_2">
+     <widget class="QTextEdit" name="usernameText">
       <property name="minimumSize">
        <size>
         <width>30</width>
@@ -69,7 +69,7 @@
      </widget>
     </item>
     <item row="1" column="7">
-     <widget class="QTextEdit" name="textEdit_3">
+     <widget class="QTextEdit" name="passwordText">
       <property name="minimumSize">
        <size>
         <width>30</width>
@@ -79,14 +79,14 @@
      </widget>
     </item>
     <item row="2" column="0" colspan="2">
-     <widget class="QPushButton" name="pushButton">
+     <widget class="QPushButton" name="startButton">
       <property name="text">
        <string>Start</string>
       </property>
      </widget>
     </item>
     <item row="2" column="2">
-     <widget class="QPushButton" name="pushButton_2">
+     <widget class="QPushButton" name="stopButton">
       <property name="minimumSize">
        <size>
         <width>100</width>
@@ -99,22 +99,22 @@
      </widget>
     </item>
     <item row="2" column="3">
-     <widget class="QCheckBox" name="checkBox">
+     <widget class="QCheckBox" name="overTCPCheck">
       <property name="text">
        <string>RTSP over TCP</string>
       </property>
      </widget>
     </item>
    </layout>
-   <zorder>checkBox</zorder>
+   <zorder>overTCPCheck</zorder>
    <zorder>label_3</zorder>
    <zorder>label</zorder>
-   <zorder>pushButton</zorder>
-   <zorder>textEdit</zorder>
-   <zorder>textEdit_2</zorder>
+   <zorder>startButton</zorder>
+   <zorder>urlText</zorder>
+   <zorder>usernameText</zorder>
    <zorder>label_2</zorder>
-   <zorder>pushButton_2</zorder>
-   <zorder>textEdit_3</zorder>
+   <zorder>stopButton</zorder>
+   <zorder>passwordText</zorder>
    <zorder>tableWidget</zorder>
   </widget>
   <widget class="QMenuBar" name="menubar">

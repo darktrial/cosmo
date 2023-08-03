@@ -25,7 +25,16 @@ MainWindow::~MainWindow()
 }
 
 
-void MainWindow::on_pushButton_clicked()
+/*void MainWindow::on_pushButton_clicked()
+{
+
+
+}*/
+
+
+
+
+void MainWindow::on_startButton_clicked()
 {
     /*QTextCursor cursor=ui->textBrowser->textCursor();
     QScrollBar *scrollbar=ui->textBrowser->verticalScrollBar();
@@ -54,8 +63,5 @@ void MainWindow::on_pushButton_clicked()
     //ui->statusbar->showMessage(colcount);
     if (ui->tableWidget->rowCount()>10)
         ui->tableWidget->removeRow(1);
-
 }
-
-
 
