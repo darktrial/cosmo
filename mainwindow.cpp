@@ -1,4 +1,7 @@
 #include <QScrollBar>
+#include <QSettings>
+#include <QFileDialog>
+#include <QFile>
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 
@@ -16,6 +19,20 @@ MainWindow::MainWindow(QWidget *parent)
     vheading->setVisible(false);
     ui->tableWidget->setColumnCount(4);
     ui->tableWidget->setHorizontalHeaderLabels(headers);
+
+    if (QFile("rtsp_client_def.ini").exists())
+    {
+        QSettings settings("rtsp_client_def.ini", QSettings::IniFormat);
+        QString filename=settings.value("current_config","").toString();
+        QSettings rtspSetting(filename,QSettings::IniFormat);
+        QString rtspUrl=rtspSetting.value("rtsp_url","").toString();
+        QString username=rtspSetting.value("username","").toString();
+        QString password=rtspSetting.value("password","").toString();
+        ui->urlText->setText(rtspUrl);
+        ui->usernameText->setText(username);
+        ui->passwordText->setText(password);
+    }
+    else ui->statusbar->showMessage("config not found");
 
 }
 
@@ -63,5 +80,32 @@ void MainWindow::on_startButton_clicked()
     //ui->statusbar->showMessage(colcount);
     if (ui->tableWidget->rowCount()>10)
         ui->tableWidget->removeRow(1);
+}
+
+
+void MainWindow::on_actionSave_triggered()
+{
+    QString filename=QFileDialog::getSaveFileName(NULL, "Save file", "", "*.config");
+    if (filename.contains(".config") == false)
+        filename+=".config";
+    QSettings settings(filename, QSettings::IniFormat);
+    settings.setValue("rtsp_url",ui->urlText->toPlainText());
+    settings.setValue("username",ui->usernameText->toPlainText());
+    settings.setValue("password",ui->passwordText->toPlainText());
+    QSettings defsettings("rtsp_client_def.ini", QSettings::IniFormat);
+    defsettings.setValue("current_config",filename);
+}
+
+
+void MainWindow::on_actionOpen_triggered()
+{
+    QString filename=QFileDialog::getOpenFileName(NULL, "Open file", "", "*.config");
+    QSettings rtspSetting(filename,QSettings::IniFormat);
+    QString rtspUrl=rtspSetting.value("rtsp_url","").toString();
+    QString username=rtspSetting.value("username","").toString();
+    QString password=rtspSetting.value("password","").toString();
+    ui->urlText->setText(rtspUrl);
+    ui->usernameText->setText(username);
+    ui->passwordText->setText(password);
 }
 
