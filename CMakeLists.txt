@@ -24,9 +24,12 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/live/groupsock/include
     ${CMAKE_CURRENT_SOURCE_DIR}/live/UsageEnvironment/include
     ${CMAKE_CURRENT_SOURCE_DIR}/live/liveMedia/include
+    ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg/include/libavcodec
+    ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg/include/libavformat
 )
 link_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/openssl/lib/
+    ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg/lib/
 )
 file(GLOB LIVE555_SRC
     live/BasicUsageEnvironment/*.cpp
@@ -75,6 +78,9 @@ target_link_libraries(cosmo PRIVATE Qt${QT_VERSION_MAJOR}::Widgets
     ssl
     crypto
     ws2_32
+    avformat
+    avcodec
+    avutil
 )
 
 set_target_properties(cosmo PROPERTIES

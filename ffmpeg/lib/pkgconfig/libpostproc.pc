@@ -1,0 +1,14 @@
+prefix=/home/jemic/ffmpeg/ffmpeg-4.4.4/install
+exec_prefix=${prefix}
+libdir=/home/jemic/ffmpeg/ffmpeg-4.4.4/install/lib
+includedir=/home/jemic/ffmpeg/ffmpeg-4.4.4/install/include
+
+Name: libpostproc
+Description: FFmpeg postprocessing library
+Version: 55.9.100
+Requires: libavutil >= 56.70.100
+Requires.private: 
+Conflicts:
+Libs: -L${libdir}  -lpostproc -lm -latomic
+Libs.private: 
+Cflags: -I${includedir}
