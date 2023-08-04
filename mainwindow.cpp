@@ -4,14 +4,70 @@
 #include <QFile>
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
+#include "rtspClientHelper.hh"
+extern "C"
+{
+#include "ffmpeg/include/libavformat/avformat.h"
+#include "ffmpeg/include/libavcodec/avcodec.h"
+}
+#define lengthOfTime    32
+#define lengthOfSize    32
+#define legnthofStatics 64
+AVCodecContext *pCodecCtx = NULL;
+rtspPlayer *player=NULL;
+typedef struct _timeRecords
+{
+    long long starttime;
+    long long endtime;
+    int numberOfFrames;
+    int sizeOfFrames;
+} timeRecords;
+timeRecords tr;
 
+bool isIFrame(AVPacket *packet)
+{
+    int got_frame;
+    if (!pCodecCtx)
+        return false;
+    AVFrame *frame = av_frame_alloc();
+
+    avcodec_send_packet(pCodecCtx, packet);
+    got_frame = avcodec_receive_frame(pCodecCtx, frame);
+
+    bool isIframe = false;
+    if (got_frame != AVERROR(EAGAIN) && got_frame != AVERROR_EOF)
+    {
+        isIframe = frame->pict_type == AV_PICTURE_TYPE_I;
+    }
+    av_frame_free(&frame);
+    return isIframe;
+}
+
+long long getCurrentTimeMicroseconds()
+{
+#ifdef _WIN32
+    FILETIME currentTime;
+    GetSystemTimePreciseAsFileTime(&currentTime);
+
+    ULARGE_INTEGER uli;
+    uli.LowPart = currentTime.dwLowDateTime;
+    uli.HighPart = currentTime.dwHighDateTime;
+
+    return uli.QuadPart / 10LL;
+#else
+    struct timeval currentTime;
+    gettimeofday(&currentTime, NULL);
+
+    return (long long)currentTime.tv_sec * 1000000LL + currentTime.tv_usec;
+#endif
+}
 
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
 {
     QStringList headers;
-    headers << "Codec" << "Frame type" << "Frame size"<<"Time";
+    headers << "Codec" << "Frame type" << "Frame size"<<"Presentation Time";
     ui->setupUi(this);
     QHeaderView *hheading=ui->tableWidget->horizontalHeader();
     QHeaderView *vheading=ui->tableWidget->verticalHeader();
@@ -41,45 +97,158 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-
-/*void MainWindow::on_pushButton_clicked()
+void addItemToTable(const char *codecName, const char *frameType, const char *frameSize, const char *presetationTime, void *privateData)
 {
 
+    Ui::MainWindow *ui=(Ui::MainWindow *)privateData;
+    QScrollBar *scrollbar=ui->tableWidget->verticalScrollBar();
+    scrollbar->setValue(scrollbar->maximum());
+    ui->tableWidget->insertRow(ui->tableWidget->rowCount());
+    QTableWidgetItem *codec=new QTableWidgetItem(codecName);
+    codec->setTextAlignment(Qt::AlignCenter);
+    QTableWidgetItem *frame_type=new QTableWidgetItem(frameType);
+    codec->setTextAlignment(Qt::AlignCenter);
+    QTableWidgetItem *frame_size=new QTableWidgetItem(frameSize);
+    codec->setTextAlignment(Qt::AlignCenter);
+    QTableWidgetItem *presentation_time=new QTableWidgetItem(presetationTime);
+    codec->setTextAlignment(Qt::AlignCenter);
 
-}*/
+    ui->tableWidget->setItem(ui->tableWidget->rowCount()-1,0,codec);
+    ui->tableWidget->setItem(ui->tableWidget->rowCount()-1,1,frame_type);
+    ui->tableWidget->setItem(ui->tableWidget->rowCount()-1,2,frame_size);
+    ui->tableWidget->setItem(ui->tableWidget->rowCount()-1,3,presentation_time);
+    if (ui->tableWidget->rowCount()>150)
+        ui->tableWidget->removeRow(1);
+}
 
 
+void onFrameArrival(unsigned char *videoData, const char *codecName, unsigned frameSize, unsigned numTruncatedBytes, struct timeval presentationTime, void *privateData)
+{
+    char uSecsStr[lengthOfTime];
+    char videoSize[lengthOfSize];
+    char statics[legnthofStatics];
+    u_int8_t start_code[4] = {0x00, 0x00, 0x00, 0x01};
+    u_int8_t *frameData;
+    AVPacket packet;
+    Ui::MainWindow *ui=(Ui::MainWindow *)privateData;
 
+    snprintf(uSecsStr, lengthOfTime, "%d.%06u",  (int)presentationTime.tv_sec, (unsigned)presentationTime.tv_usec);
+    snprintf(videoSize,lengthOfSize,"%d", frameSize);
+    if (strcmp(codecName, "JPEG") == 0)
+    {
+
+        //std::cout << "codec:" << codecName << " size:" << frameSize << " presentation time:" << (int)presentationTime.tv_sec << "." << uSecsStr << "\n";
+        addItemToTable("JPEG","I",videoSize,uSecsStr, privateData);
+        return;
+    }
+    frameData = (u_int8_t *)malloc(frameSize + 4);
+    memcpy(frameData, start_code, 4);
+    memcpy(frameData + 4, videoData, frameSize);
+    av_new_packet(&packet, frameSize + 4);
+    packet.data = frameData; //(uint8_t*)fReceiveBuffer;
+    packet.size = frameSize + 4;
+    bool isIframe = isIFrame(&packet);
+    if (isIframe)
+    {
+        /*std::cout << " codec:" << codecName << " I-Frame "
+                  << " size:" << frameSize << " bytes "
+                  << "presentation time:" << (int)presentationTime.tv_sec << "." << uSecsStr << "\n";*/
+        addItemToTable(codecName,"I",videoSize,uSecsStr, privateData);
+        if (tr.starttime == 0)
+        {
+            tr.starttime = getCurrentTimeMicroseconds();
+            tr.numberOfFrames++;
+            tr.sizeOfFrames = frameSize;
+        }
+        else
+        {
+            tr.endtime = getCurrentTimeMicroseconds();
+            //std::cout << "FPS:" << (tr.numberOfFrames * 1000000.0) / (tr.endtime - tr.starttime) << "\n";
+            //std::cout << "bit rate:" << (tr.sizeOfFrames) / ((tr.endtime - tr.starttime) / 1000000.0) / 1024 << " KB/s \n";
+            float fps= (tr.numberOfFrames * 1000000.0) / (tr.endtime - tr.starttime);
+            float bitrate=(tr.sizeOfFrames) / ((tr.endtime - tr.starttime) / 1000000.0) / 1024;
+            snprintf(statics,legnthofStatics,"FPS:%.3f        bit rate:%.3f KB//s",fps,bitrate);
+            ui->statusbar->showMessage(statics);
+            tr.starttime =tr.endtime;
+            tr.numberOfFrames=1;
+            tr.sizeOfFrames=frameSize;
+        }
+    }
+    else
+    {
+        /*std::cout << " codec:" << codecName << " P-frame "
+                  << " size:" << frameSize << " bytes "
+                  << " presentation time:" << (int)presentationTime.tv_sec << "." << uSecsStr << "\n";*/
+        addItemToTable(codecName,"P",videoSize,uSecsStr, privateData);
+        if (tr.starttime != 0)
+        {
+            tr.numberOfFrames++;
+            tr.sizeOfFrames += frameSize;
+        }
+
+    }
+    free(frameData);
+    av_packet_unref(&packet);
+}
+
+
+void onConnectionSetup(char *codecName, void *privateData)
+{
+    AVCodec *codec;
+    if (strcmp(codecName, "H264") == 0)
+        codec = avcodec_find_decoder(AV_CODEC_ID_H264);
+    else if (strcmp(codecName, "H265") == 0)
+        codec = avcodec_find_decoder(AV_CODEC_ID_H265);
+    else
+        return;
+
+    if (!codec)
+    {
+        std::cout << "Failed to find the suitable decoder"
+                  << "\n";
+        return;
+    }
+    pCodecCtx = avcodec_alloc_context3(codec);
+    if (!pCodecCtx)
+    {
+        std::cout << "Failed to find the suitable context"
+                  << "\n";
+        return;
+    }
+    // Open the codec
+    if (avcodec_open2(pCodecCtx, codec, NULL) < 0)
+    {
+        std::cout << "Failed to open the codec"
+                  << "\n";
+        avcodec_free_context(&pCodecCtx);
+        return;
+    }
+}
 
 void MainWindow::on_startButton_clicked()
 {
-    /*QTextCursor cursor=ui->textBrowser->textCursor();
-    QScrollBar *scrollbar=ui->textBrowser->verticalScrollBar();
 
-    QTextBlockFormat format;
-    format.setBackground(Qt::red);
-    cursor.clearSelection();
-    cursor.movePosition(QTextCursor::End);
-    ui->textBrowser->setTextCursor(cursor);
-    QString str("H264");
-    str+=QString(60,' ');
-    str+=QString("I");
-    str+=QString(60,' ');
-    str+=QString("1234566");
-    str+=QString(60,' ');
-    str+=QString("1.16");
-    ui->textBrowser->insertPlainText(str);
-    scrollbar->setValue(scrollbar->maximum());*/
-    QScrollBar *scrollbar=ui->tableWidget->verticalScrollBar();
+    /*QScrollBar *scrollbar=ui->tableWidget->verticalScrollBar();
     scrollbar->setValue(scrollbar->maximum());
     ui->tableWidget->insertRow(ui->tableWidget->rowCount());
     QTableWidgetItem *item=new QTableWidgetItem("12345");
     item->setTextAlignment(Qt::AlignCenter);
     ui->tableWidget->setItem(ui->tableWidget->rowCount()-1,0,item);//new QTableWidgetItem("12345",Qt::AlignCenter));
-    //QString colcount=QString("%1").arg(ui->tableWidget->rowCount());
-    //ui->statusbar->showMessage(colcount);
     if (ui->tableWidget->rowCount()>10)
-        ui->tableWidget->removeRow(1);
+        ui->tableWidget->removeRow(1);*/
+    std::string url=ui->urlText->toPlainText().toStdString();
+    std::string username=ui->usernameText->toPlainText().toStdString();
+    std::string password=ui->passwordText->toPlainText().toStdString();
+    player = new rtspPlayer((void *)ui);
+    player->onFrameData = onFrameArrival;
+    player->onConnectionSetup = onConnectionSetup;
+    if (player->startRTSP(url.c_str(), false, username.c_str(), password.c_str()) != OK)
+    {
+        delete player;
+        player=NULL;
+        ui->statusbar->showMessage("RTSP connection failed");
+    }
+    else ui->startButton->setEnabled(false);
 }
 
 
@@ -107,5 +276,13 @@ void MainWindow::on_actionOpen_triggered()
     ui->urlText->setText(rtspUrl);
     ui->usernameText->setText(username);
     ui->passwordText->setText(password);
+}
+
+
+void MainWindow::on_stopButton_clicked()
+{
+    player->stopRTSP();
+    delete player;
+    ui->startButton->setEnabled(true);
 }
 

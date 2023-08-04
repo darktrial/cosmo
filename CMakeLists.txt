@@ -26,6 +26,7 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/live/liveMedia/include
     ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg/include/libavcodec
     ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg/include/libavformat
+    ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg/include/
 )
 link_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/openssl/lib/
@@ -81,6 +82,7 @@ target_link_libraries(cosmo PRIVATE Qt${QT_VERSION_MAJOR}::Widgets
     avformat
     avcodec
     avutil
+    bcrypt
 )
 
 set_target_properties(cosmo PROPERTIES
