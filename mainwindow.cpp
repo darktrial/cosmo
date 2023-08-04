@@ -228,14 +228,6 @@ void onConnectionSetup(char *codecName, void *privateData)
 void MainWindow::on_startButton_clicked()
 {
 
-    /*QScrollBar *scrollbar=ui->tableWidget->verticalScrollBar();
-    scrollbar->setValue(scrollbar->maximum());
-    ui->tableWidget->insertRow(ui->tableWidget->rowCount());
-    QTableWidgetItem *item=new QTableWidgetItem("12345");
-    item->setTextAlignment(Qt::AlignCenter);
-    ui->tableWidget->setItem(ui->tableWidget->rowCount()-1,0,item);//new QTableWidgetItem("12345",Qt::AlignCenter));
-    if (ui->tableWidget->rowCount()>10)
-        ui->tableWidget->removeRow(1);*/
     std::string url=ui->urlText->toPlainText().toStdString();
     std::string username=ui->usernameText->toPlainText().toStdString();
     std::string password=ui->passwordText->toPlainText().toStdString();
