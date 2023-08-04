@@ -137,7 +137,26 @@ void onFrameArrival(unsigned char *videoData, const char *codecName, unsigned fr
     if (strcmp(codecName, "JPEG") == 0)
     {
 
-        //std::cout << "codec:" << codecName << " size:" << frameSize << " presentation time:" << (int)presentationTime.tv_sec << "." << uSecsStr << "\n";
+        if (tr.numberOfFrames == 0)
+        {
+            tr.starttime = getCurrentTimeMicroseconds();
+            tr.numberOfFrames++;
+            tr.sizeOfFrames = frameSize;
+        }
+        if (tr.numberOfFrames >= 30)
+        {
+            tr.endtime = getCurrentTimeMicroseconds();
+            float fps= (tr.numberOfFrames * 1000000.0) / (tr.endtime - tr.starttime);
+            float bitrate=(tr.sizeOfFrames) / ((tr.endtime - tr.starttime) / 1000000.0) / 1024;
+            snprintf(statics,legnthofStatics,"FPS:%.3f        bit rate:%.3f KB/s",fps,bitrate);
+            ui->statusbar->showMessage(statics);
+            tr.starttime =tr.endtime;
+            tr.numberOfFrames=1;
+            tr.sizeOfFrames=frameSize;
+            tr.numberOfFrames=1;
+        }
+        tr.numberOfFrames++;
+        tr.sizeOfFrames+=frameSize;
         addItemToTable("JPEG","I",videoSize,uSecsStr, privateData);
         return;
     }
@@ -145,7 +164,7 @@ void onFrameArrival(unsigned char *videoData, const char *codecName, unsigned fr
     memcpy(frameData, start_code, 4);
     memcpy(frameData + 4, videoData, frameSize);
     av_new_packet(&packet, frameSize + 4);
-    packet.data = frameData; //(uint8_t*)fReceiveBuffer;
+    packet.data = frameData;
     packet.size = frameSize + 4;
     bool isIframe = isIFrame(&packet);
     if (isIframe)
@@ -167,7 +186,7 @@ void onFrameArrival(unsigned char *videoData, const char *codecName, unsigned fr
             //std::cout << "bit rate:" << (tr.sizeOfFrames) / ((tr.endtime - tr.starttime) / 1000000.0) / 1024 << " KB/s \n";
             float fps= (tr.numberOfFrames * 1000000.0) / (tr.endtime - tr.starttime);
             float bitrate=(tr.sizeOfFrames) / ((tr.endtime - tr.starttime) / 1000000.0) / 1024;
-            snprintf(statics,legnthofStatics,"FPS:%.3f        bit rate:%.3f KB//s",fps,bitrate);
+            snprintf(statics,legnthofStatics,"FPS:%.3f        bit rate:%.3f KB/s",fps,bitrate);
             ui->statusbar->showMessage(statics);
             tr.starttime =tr.endtime;
             tr.numberOfFrames=1;
@@ -223,6 +242,10 @@ void onConnectionSetup(char *codecName, void *privateData)
         avcodec_free_context(&pCodecCtx);
         return;
     }
+    tr.starttime = 0;
+    tr.endtime = 0;
+    tr.numberOfFrames = 0;
+    tr.sizeOfFrames = 0;
 }
 
 void MainWindow::on_startButton_clicked()
