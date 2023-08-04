@@ -298,8 +298,14 @@ void MainWindow::on_actionOpen_triggered()
 
 void MainWindow::on_stopButton_clicked()
 {
-    player->stopRTSP();
-    delete player;
+    if (player!=NULL)
+    {
+        player->stopRTSP();
+        delete player;
+    }
+    player=NULL;
     ui->startButton->setEnabled(true);
+    if (pCodecCtx != NULL)
+        avcodec_free_context(&pCodecCtx);
 }
 
