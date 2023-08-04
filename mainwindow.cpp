@@ -251,13 +251,15 @@ void onConnectionSetup(char *codecName, void *privateData)
 void MainWindow::on_startButton_clicked()
 {
 
+    bool overTCP=false;
     std::string url=ui->urlText->toPlainText().toStdString();
     std::string username=ui->usernameText->toPlainText().toStdString();
     std::string password=ui->passwordText->toPlainText().toStdString();
     player = new rtspPlayer((void *)ui);
     player->onFrameData = onFrameArrival;
     player->onConnectionSetup = onConnectionSetup;
-    if (player->startRTSP(url.c_str(), false, username.c_str(), password.c_str()) != OK)
+    if (ui->overTCPCheck->isChecked()) overTCP=true;
+    if (player->startRTSP(url.c_str(), overTCP, username.c_str(), password.c_str()) != OK)
     {
         delete player;
         player=NULL;
