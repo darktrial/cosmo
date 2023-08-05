@@ -89,6 +89,7 @@ MainWindow::MainWindow(QWidget *parent)
         ui->passwordText->setText(password);
     }
     else ui->statusbar->showMessage("config not found");
+    setWindowIcon(QIcon(":/icons/cosmo.ico"));
 
 }
 
