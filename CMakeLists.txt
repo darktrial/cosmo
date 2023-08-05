@@ -48,12 +48,13 @@ set(PROJECT_SOURCES
         mainwindow.ui
         rtspClientHelper.cpp
 )
-
 if(${QT_VERSION_MAJOR} GREATER_EQUAL 6)
     qt_add_executable(cosmo
         ${LIVE555_SRC}
         MANUAL_FINALIZATION
         ${PROJECT_SOURCES}
+        cosmo.qrc
+        icon.rc
     )
 # Define target properties for Android with Qt 6 as:
 #    set_property(TARGET cosmo APPEND PROPERTY QT_ANDROID_PACKAGE_SOURCE_DIR
@@ -64,6 +65,8 @@ else()
         add_library(cosmo SHARED
             ${LIVE555_SRC}
             ${PROJECT_SOURCES}
+            cosmo.qrc
+            icon.rc
         )
 # Define properties for Android with Qt 5 after find_package() calls as:
 #    set(ANDROID_PACKAGE_SOURCE_DIR "${CMAKE_CURRENT_SOURCE_DIR}/android")
@@ -71,6 +74,8 @@ else()
         add_executable(cosmo
             ${LIVE555_SRC}
             ${PROJECT_SOURCES}
+            cosmo.qrc
+            icon.rc
         )
     endif()
 endif()
