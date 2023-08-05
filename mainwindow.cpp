@@ -100,6 +100,7 @@ MainWindow::~MainWindow()
 void addItemToTable(const char *codecName, const char *frameType, const char *frameSize, const char *presetationTime, void *privateData)
 {
 
+
     Ui::MainWindow *ui=(Ui::MainWindow *)privateData;
     QScrollBar *scrollbar=ui->tableWidget->verticalScrollBar();
     scrollbar->setValue(scrollbar->maximum());
@@ -112,6 +113,17 @@ void addItemToTable(const char *codecName, const char *frameType, const char *fr
     codec->setTextAlignment(Qt::AlignCenter);
     QTableWidgetItem *presentation_time=new QTableWidgetItem(presetationTime);
     codec->setTextAlignment(Qt::AlignCenter);
+
+    if (strcmp("I",frameType)==0)
+    {
+        QBrush brush;
+        QColor green(Qt::green);
+        brush.setColor(green);
+        codec->setBackground(brush);
+        frame_type->setBackground(brush);
+        frame_size->setBackground(brush);
+        presentation_time->setBackground(brush);
+    }
 
     ui->tableWidget->setItem(ui->tableWidget->rowCount()-1,0,codec);
     ui->tableWidget->setItem(ui->tableWidget->rowCount()-1,1,frame_type);
