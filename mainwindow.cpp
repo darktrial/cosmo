@@ -10,7 +10,7 @@ extern "C"
 #include "ffmpeg/include/libavformat/avformat.h"
 #include "ffmpeg/include/libavcodec/avcodec.h"
 }
-#define COSMOVERSION "1.0.1"
+#define COSMOVERSION "1.0.2"
 #define NUMBER_OF_STATICS 4
 #define lengthOfTime    32
 #define lengthOfSize    32
