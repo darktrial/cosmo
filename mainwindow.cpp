@@ -267,6 +267,7 @@ void MainWindow::on_startButton_clicked()
 {
 
     bool overTCP=false;
+    ui->tableWidget->setRowCount(0);
     std::string url=ui->urlText->toPlainText().toStdString();
     std::string username=ui->usernameText->toPlainText().toStdString();
     std::string password=ui->passwordText->toPlainText().toStdString();
