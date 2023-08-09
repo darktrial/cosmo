@@ -137,7 +137,7 @@ void addItemToTable(const char *codecName, const char *frameType, const char *fr
 }
 
 
-void onFrameArrival(unsigned char *videoData, const char *codecName, unsigned frameSize, unsigned numTruncatedBytes, struct timeval presentationTime, void *privateData)
+void onFrameArrival(unsigned char *videoData, const char *codecName, unsigned frameSize, unsigned numTruncatedBytes, struct timeval presentationTime, void *privateData, unsigned char *sps_pps_data, unsigned int sps_pps_data_size)
 {
     char uSecsStr[lengthOfTime];
     char videoSize[lengthOfSize];
@@ -147,8 +147,13 @@ void onFrameArrival(unsigned char *videoData, const char *codecName, unsigned fr
     AVPacket packet;
     Ui::MainWindow *ui=(Ui::MainWindow *)privateData;
 
-    snprintf(uSecsStr, lengthOfTime, "%d.%06u",  (int)presentationTime.tv_sec, (unsigned)presentationTime.tv_usec);
-    snprintf(videoSize,lengthOfSize,"%d", frameSize);
+    if (strcmp(codecName, "JPEG") == 0 || strcmp(codecName, "H264") == 0 || strcmp(codecName, "H265") == 0)
+    {
+        snprintf(uSecsStr, lengthOfTime, "%d.%06u",  (int)presentationTime.tv_sec, (unsigned)presentationTime.tv_usec);
+        snprintf(videoSize,lengthOfSize,"%d", frameSize);
+    }
+    else return;
+
     if (strcmp(codecName, "JPEG") == 0)
     {
 
@@ -187,6 +192,11 @@ void onFrameArrival(unsigned char *videoData, const char *codecName, unsigned fr
         /*std::cout << " codec:" << codecName << " I-Frame "
                   << " size:" << frameSize << " bytes "
                   << "presentation time:" << (int)presentationTime.tv_sec << "." << uSecsStr << "\n";*/
+        if (pCodecCtx->extradata == NULL && sps_pps_data_size > 0)
+        {
+            pCodecCtx->extradata= sps_pps_data;
+            pCodecCtx->extradata_size = sps_pps_data_size;
+        }
         addItemToTable(codecName,"I",videoSize,uSecsStr, privateData);
         if (tr.starttime == 0)
         {
@@ -213,7 +223,8 @@ void onFrameArrival(unsigned char *videoData, const char *codecName, unsigned fr
         /*std::cout << " codec:" << codecName << " P-frame "
                   << " size:" << frameSize << " bytes "
                   << " presentation time:" << (int)presentationTime.tv_sec << "." << uSecsStr << "\n";*/
-        addItemToTable(codecName,"P",videoSize,uSecsStr, privateData);
+        if (pCodecCtx->extradata != NULL)
+            addItemToTable(codecName,"P",videoSize,uSecsStr, privateData);
         if (tr.starttime != 0)
         {
             tr.numberOfFrames++;
@@ -320,6 +331,7 @@ void MainWindow::on_stopButton_clicked()
         delete player;
     }
     player=NULL;
+    pCodecCtx->extradata=NULL;
     ui->startButton->setEnabled(true);
     if (pCodecCtx != NULL)
         avcodec_free_context(&pCodecCtx);

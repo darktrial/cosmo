@@ -22,7 +22,7 @@
 #include "BasicUsageEnvironment.hh"
 
 #define RTSP_CLIENT_VERBOSITY_LEVEL 1 // by default, print verbose output from each "RTSPClient"
-//#define REQUEST_STREAMING_OVER_TCP False
+// #define REQUEST_STREAMING_OVER_TCP False
 #define DUMMY_SINK_RECEIVE_BUFFER_SIZE 1048576 // 100000
 // #define DEBUG_PRINT_EACH_RECEIVED_FRAME 0
 
@@ -70,13 +70,17 @@ public:
   int startRTSP(const char *url, bool overTCP, const char *username, const char *password);
   void stopRTSP();
   void (*onConnectionSetup)(char *, void *);
-  void (*onFrameData)(unsigned char *, const char *, unsigned, unsigned, struct timeval, void *);
+  void (*onFrameData)(unsigned char *, const char *, unsigned, unsigned, struct timeval, void *, unsigned char *, unsigned int);
   void *privateData;
+  unsigned char *sps_pps_data;
+  unsigned int sps_pps_data_size;
   rtspPlayer(void *data)
   {
     onFrameData = NULL;
     onConnectionSetup = NULL;
-    overTCP=false;
+    sps_pps_data = NULL;
+    sps_pps_data_size = 0;
+    overTCP = false;
     privateData = data;
   }
   ~rtspPlayer()
