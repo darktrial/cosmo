@@ -81,11 +81,6 @@ void rtspPlayer::stopRTSP()
   {
     usleep(10);
   }
-  if (sps_pps_data_size > 0)
-  {
-    delete[] sps_pps_data;
-    sps_pps_data = NULL;
-  }
 }
 
 static void openURL(UsageEnvironment &env, char const *progName, RTSPClient *rtspClient, char const *rtspURL, Authenticator *authenticator)
@@ -425,26 +420,8 @@ void DummySink::afterGettingFrame(unsigned frameSize, unsigned numTruncatedBytes
 #endif
   envir() << "\n";
 #endif
-  if (strcmp(fSubsession.codecName(), "H264") == 0 || strcmp(fSubsession.codecName(), "H265") == 0)
-  {
-    if (this->player->sps_pps_data == NULL)
-    {
-      unsigned int SPropRecords = 1;
-      SPropRecord *p_record = parseSPropParameterSets(fSubsession.fmtp_spropparametersets(), SPropRecords);
-      SPropRecord &sps = p_record[0];
-      SPropRecord &pps = p_record[1];
-      int totalsize = 8 + sps.sPropLength + pps.sPropLength;
-      this->player->sps_pps_data = (uint8_t *)malloc(totalsize);
-      this->player->sps_pps_data_size = totalsize;
-      memcpy(this->player->sps_pps_data, start_code, 4);
-      memcpy(this->player->sps_pps_data + 4, sps.sPropBytes, sps.sPropLength);
-      memcpy(this->player->sps_pps_data + 4 + sps.sPropLength, start_code, 4);
-      memcpy(this->player->sps_pps_data + 8 + sps.sPropLength, pps.sPropBytes, pps.sPropLength);
-      delete[] p_record;
-    }
-  }
   if (this->player->onFrameData != NULL)
-    this->player->onFrameData(fReceiveBuffer, fSubsession.codecName(), frameSize, numTruncatedBytes, presentationTime, this->player->privateData, this->player->sps_pps_data, this->player->sps_pps_data_size);
+    this->player->onFrameData(fReceiveBuffer, fSubsession.codecName(), frameSize, numTruncatedBytes, presentationTime, this->player->privateData);
   continuePlaying();
 }
 

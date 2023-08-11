@@ -70,16 +70,12 @@ public:
   int startRTSP(const char *url, bool overTCP, const char *username, const char *password);
   void stopRTSP();
   void (*onConnectionSetup)(char *, void *);
-  void (*onFrameData)(unsigned char *, const char *, unsigned, unsigned, struct timeval, void *, unsigned char *, unsigned int);
+  void (*onFrameData)(unsigned char *, const char *, unsigned, unsigned, struct timeval, void *);
   void *privateData;
-  unsigned char *sps_pps_data;
-  unsigned int sps_pps_data_size;
   rtspPlayer(void *data)
   {
     onFrameData = NULL;
     onConnectionSetup = NULL;
-    sps_pps_data = NULL;
-    sps_pps_data_size = 0;
     overTCP = false;
     privateData = data;
   }

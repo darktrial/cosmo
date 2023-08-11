@@ -9,14 +9,18 @@ extern "C"
 {
 #include "ffmpeg/include/libavformat/avformat.h"
 #include "ffmpeg/include/libavcodec/avcodec.h"
+extern int ffpg_get_minqp();
+extern int ffpg_get_maxqp();
+extern double ffpg_get_avgqp();
 }
-#define COSMOVERSION "1.0.3"
-#define NUMBER_OF_STATICS 4
+#define COSMOVERSION "1.0.4"
+#define NUMBER_OF_STATICS 5
 #define lengthOfTime    32
 #define lengthOfSize    32
 #define legnthofStatics 64
 AVCodecContext *pCodecCtx = NULL;
 rtspPlayer *player=NULL;
+bool hasIframe = false;
 typedef struct _timeRecords
 {
     long long starttime;
@@ -26,7 +30,7 @@ typedef struct _timeRecords
 } timeRecords;
 timeRecords tr;
 
-bool isIFrame(AVPacket *packet)
+/*bool isIFrame(AVPacket *packet)
 {
     int got_frame;
     if (!pCodecCtx)
@@ -43,6 +47,70 @@ bool isIFrame(AVPacket *packet)
     }
     av_frame_free(&frame);
     return isIframe;
+}*/
+void getFrameStatics(const char *codecName, AVPacket *packet, bool &isIframe, int &min_qp, int &max_qp, double &avg_qp)
+{
+    int got_frame=0;
+    int ret = 0;
+    int qp_sum = 0;
+    AVBufferRef *qp_table_buf = NULL;
+    unsigned char *qscale_table = NULL;
+
+    if (!pCodecCtx)
+        return;
+
+    AVFrame *frame = av_frame_alloc();
+    int x, y;
+    avcodec_send_packet(pCodecCtx, packet);
+    got_frame = avcodec_receive_frame(pCodecCtx, frame);
+
+    if (got_frame == 0)
+    {
+        qDebug("got frame %d",got_frame);
+        isIframe = frame->pict_type == AV_PICTURE_TYPE_I;
+        if (strcmp(codecName,"H264") == 0)
+        {
+            //qDebug("get h264 qp\n");
+            int mb_width = (pCodecCtx->width + 15) / 16;
+            int mb_height = (pCodecCtx->height + 15) / 16;
+            int mb_stride = mb_width + 1;
+            //qDebug("mb_width:%d mb_height:%d mb_stride:%d", mb_width, mb_height, mb_stride);
+            if (mb_width != 0)
+            {
+                qp_table_buf = av_buffer_ref(frame->qp_table_buf);
+                qscale_table = qp_table_buf->data;
+                //qDebug("start to do it");
+                if (qscale_table!= NULL)
+                {
+                    for (y = 0; y < mb_height; y++)
+                    {
+                        for (x = 0; x < mb_width; x++)
+                        {
+                            qp_sum += qscale_table[x + y * mb_stride];
+                            if (qscale_table[x + y * mb_stride] > max_qp)
+                            {
+                                max_qp = qscale_table[x + y * mb_stride];
+                            }
+                            if (qscale_table[x + y * mb_stride] < min_qp || min_qp == 0)
+                            {
+                                min_qp = qscale_table[x + y * mb_stride];
+                            }
+                        }
+                    }
+                    avg_qp = (double)qp_sum / (mb_height * mb_width);
+                    //qDebug("min_qp %d map_qp %d avg_qp %.2f",min_qp,max_qp,avg_qp);
+                }
+                av_buffer_unref(&qp_table_buf);
+            }
+        }
+        else
+        {
+            min_qp=ffpg_get_minqp();
+            max_qp=ffpg_get_maxqp();
+            avg_qp=ffpg_get_avgqp();
+        }
+    }
+    av_frame_free(&frame);
 }
 
 long long getCurrentTimeMicroseconds()
@@ -69,13 +137,13 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     QStringList headers;
-    headers << "Codec" << "Frame type" << "Frame size"<<"Presentation Time";
+    headers << "Codec" << "Frame type" << "Avg QP" << "Frame size"<<"Presentation Time";
     ui->setupUi(this);
     QHeaderView *hheading=ui->tableWidget->horizontalHeader();
     QHeaderView *vheading=ui->tableWidget->verticalHeader();
     hheading->setSectionResizeMode(QHeaderView::Stretch);
     vheading->setVisible(false);
-    ui->tableWidget->setColumnCount(4);
+    ui->tableWidget->setColumnCount(5);
     ui->tableWidget->setHorizontalHeaderLabels(headers);
 
     if (QFile("rtsp_client_def.ini").exists())
@@ -103,7 +171,7 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-void addItemToTable(const char *codecName, const char *frameType, const char *frameSize, const char *presetationTime, void *privateData)
+void addItemToTable(const char *codecName, const char *frameType, const char *avgqp, const char *frameSize, const char *presetationTime, void *privateData)
 {
 
 
@@ -116,6 +184,8 @@ void addItemToTable(const char *codecName, const char *frameType, const char *fr
     codec->setTextAlignment(Qt::AlignCenter);
     QTableWidgetItem *frame_type=new QTableWidgetItem(frameType);
     codec->setTextAlignment(Qt::AlignCenter);
+    QTableWidgetItem *frame_qp=new QTableWidgetItem(avgqp);
+    codec->setTextAlignment(Qt::AlignCenter);
     QTableWidgetItem *frame_size=new QTableWidgetItem(frameSize);
     codec->setTextAlignment(Qt::AlignCenter);
     QTableWidgetItem *presentation_time=new QTableWidgetItem(presetationTime);
@@ -123,8 +193,9 @@ void addItemToTable(const char *codecName, const char *frameType, const char *fr
 
     ui->tableWidget->setItem(ui->tableWidget->rowCount()-1,0,codec);
     ui->tableWidget->setItem(ui->tableWidget->rowCount()-1,1,frame_type);
-    ui->tableWidget->setItem(ui->tableWidget->rowCount()-1,2,frame_size);
-    ui->tableWidget->setItem(ui->tableWidget->rowCount()-1,3,presentation_time);
+    ui->tableWidget->setItem(ui->tableWidget->rowCount()-1,2,frame_qp);
+    ui->tableWidget->setItem(ui->tableWidget->rowCount()-1,3,frame_size);
+    ui->tableWidget->setItem(ui->tableWidget->rowCount()-1,4,presentation_time);
 
     if (strcmp("I",frameType)==0)
     {
@@ -137,14 +208,20 @@ void addItemToTable(const char *codecName, const char *frameType, const char *fr
 }
 
 
-void onFrameArrival(unsigned char *videoData, const char *codecName, unsigned frameSize, unsigned numTruncatedBytes, struct timeval presentationTime, void *privateData, unsigned char *sps_pps_data, unsigned int sps_pps_data_size)
+void onFrameArrival(unsigned char *videoData, const char *codecName, unsigned frameSize, unsigned numTruncatedBytes, struct timeval presentationTime, void *privateData)
 {
     char uSecsStr[lengthOfTime];
     char videoSize[lengthOfSize];
+    char avgqp[lengthOfSize];
     char statics[legnthofStatics];
     u_int8_t start_code[4] = {0x00, 0x00, 0x00, 0x01};
     u_int8_t *frameData;
     AVPacket packet;
+    int min_qp = 0;
+    int max_qp = 0;
+    int qp_sum = 0;
+    double avg_qp = 0;
+    bool isIframe = false;
     Ui::MainWindow *ui=(Ui::MainWindow *)privateData;
 
     if (strcmp(codecName, "JPEG") == 0 || strcmp(codecName, "H264") == 0 || strcmp(codecName, "H265") == 0)
@@ -177,7 +254,7 @@ void onFrameArrival(unsigned char *videoData, const char *codecName, unsigned fr
         }
         tr.numberOfFrames++;
         tr.sizeOfFrames+=frameSize;
-        addItemToTable("JPEG","I",videoSize,uSecsStr, privateData);
+        addItemToTable("JPEG","I","NA",videoSize,uSecsStr, privateData);
         return;
     }
     frameData = (u_int8_t *)malloc(frameSize + 4);
@@ -186,18 +263,16 @@ void onFrameArrival(unsigned char *videoData, const char *codecName, unsigned fr
     av_new_packet(&packet, frameSize + 4);
     packet.data = frameData;
     packet.size = frameSize + 4;
-    bool isIframe = isIFrame(&packet);
+    //bool isIframe = isIFrame(&packet);
+    getFrameStatics(codecName,&packet, isIframe, min_qp, max_qp, avg_qp);
+    snprintf(avgqp,lengthOfSize,"%.2f",avg_qp);
     if (isIframe)
     {
         /*std::cout << " codec:" << codecName << " I-Frame "
                   << " size:" << frameSize << " bytes "
                   << "presentation time:" << (int)presentationTime.tv_sec << "." << uSecsStr << "\n";*/
-        if (pCodecCtx->extradata == NULL && sps_pps_data_size > 0)
-        {
-            pCodecCtx->extradata= sps_pps_data;
-            pCodecCtx->extradata_size = sps_pps_data_size;
-        }
-        addItemToTable(codecName,"I",videoSize,uSecsStr, privateData);
+        hasIframe=true;
+        addItemToTable(codecName,"I", avgqp,videoSize,uSecsStr, privateData);
         if (tr.starttime == 0)
         {
             tr.starttime = getCurrentTimeMicroseconds();
@@ -223,8 +298,8 @@ void onFrameArrival(unsigned char *videoData, const char *codecName, unsigned fr
         /*std::cout << " codec:" << codecName << " P-frame "
                   << " size:" << frameSize << " bytes "
                   << " presentation time:" << (int)presentationTime.tv_sec << "." << uSecsStr << "\n";*/
-        if (pCodecCtx->extradata != NULL)
-            addItemToTable(codecName,"P",videoSize,uSecsStr, privateData);
+        if (hasIframe)
+            addItemToTable(codecName,"P",avgqp,videoSize,uSecsStr, privateData);
         if (tr.starttime != 0)
         {
             tr.numberOfFrames++;
@@ -282,6 +357,7 @@ void MainWindow::on_startButton_clicked()
     std::string url=ui->urlText->toPlainText().toStdString();
     std::string username=ui->usernameText->toPlainText().toStdString();
     std::string password=ui->passwordText->toPlainText().toStdString();
+    hasIframe=false;
     player = new rtspPlayer((void *)ui);
     player->onFrameData = onFrameArrival;
     player->onConnectionSetup = onConnectionSetup;
@@ -331,7 +407,6 @@ void MainWindow::on_stopButton_clicked()
         delete player;
     }
     player=NULL;
-    pCodecCtx->extradata=NULL;
     ui->startButton->setEnabled(true);
     if (pCodecCtx != NULL)
         avcodec_free_context(&pCodecCtx);
