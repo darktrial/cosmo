@@ -30,24 +30,6 @@ typedef struct _timeRecords
 } timeRecords;
 timeRecords tr;
 
-/*bool isIFrame(AVPacket *packet)
-{
-    int got_frame;
-    if (!pCodecCtx)
-        return false;
-    AVFrame *frame = av_frame_alloc();
-
-    avcodec_send_packet(pCodecCtx, packet);
-    got_frame = avcodec_receive_frame(pCodecCtx, frame);
-
-    bool isIframe = false;
-    if (got_frame != AVERROR(EAGAIN) && got_frame != AVERROR_EOF)
-    {
-        isIframe = frame->pict_type == AV_PICTURE_TYPE_I;
-    }
-    av_frame_free(&frame);
-    return isIframe;
-}*/
 void getFrameStatics(const char *codecName, AVPacket *packet, bool &isIframe, int &min_qp, int &max_qp, double &avg_qp)
 {
     int got_frame=0;
@@ -66,20 +48,16 @@ void getFrameStatics(const char *codecName, AVPacket *packet, bool &isIframe, in
 
     if (got_frame == 0)
     {
-        qDebug("got frame %d",got_frame);
         isIframe = frame->pict_type == AV_PICTURE_TYPE_I;
         if (strcmp(codecName,"H264") == 0)
-        {
-            //qDebug("get h264 qp\n");
+        {          
             int mb_width = (pCodecCtx->width + 15) / 16;
             int mb_height = (pCodecCtx->height + 15) / 16;
-            int mb_stride = mb_width + 1;
-            //qDebug("mb_width:%d mb_height:%d mb_stride:%d", mb_width, mb_height, mb_stride);
+            int mb_stride = mb_width + 1;          
             if (mb_width != 0)
             {
                 qp_table_buf = av_buffer_ref(frame->qp_table_buf);
-                qscale_table = qp_table_buf->data;
-                //qDebug("start to do it");
+                qscale_table = qp_table_buf->data;              
                 if (qscale_table!= NULL)
                 {
                     for (y = 0; y < mb_height; y++)
@@ -97,8 +75,7 @@ void getFrameStatics(const char *codecName, AVPacket *packet, bool &isIframe, in
                             }
                         }
                     }
-                    avg_qp = (double)qp_sum / (mb_height * mb_width);
-                    //qDebug("min_qp %d map_qp %d avg_qp %.2f",min_qp,max_qp,avg_qp);
+                    avg_qp = (double)qp_sum / (mb_height * mb_width);               
                 }
                 av_buffer_unref(&qp_table_buf);
             }
@@ -207,6 +184,14 @@ void addItemToTable(const char *codecName, const char *frameType, const char *av
         ui->tableWidget->removeRow(1);
 }
 
+bool checkspsOrpps(unsigned frameSize, double avg_qp)
+{
+    if (avg_qp==0)
+    {
+        return true;
+    }
+    return false;
+}
 
 void onFrameArrival(unsigned char *videoData, const char *codecName, unsigned frameSize, unsigned numTruncatedBytes, struct timeval presentationTime, void *privateData)
 {
@@ -263,7 +248,6 @@ void onFrameArrival(unsigned char *videoData, const char *codecName, unsigned fr
     av_new_packet(&packet, frameSize + 4);
     packet.data = frameData;
     packet.size = frameSize + 4;
-    //bool isIframe = isIFrame(&packet);
     getFrameStatics(codecName,&packet, isIframe, min_qp, max_qp, avg_qp);
     snprintf(avgqp,lengthOfSize,"%.2f",avg_qp);
     if (isIframe)
@@ -295,17 +279,19 @@ void onFrameArrival(unsigned char *videoData, const char *codecName, unsigned fr
     }
     else
     {
-        /*std::cout << " codec:" << codecName << " P-frame "
-                  << " size:" << frameSize << " bytes "
-                  << " presentation time:" << (int)presentationTime.tv_sec << "." << uSecsStr << "\n";*/
-        if (hasIframe)
-            addItemToTable(codecName,"P",avgqp,videoSize,uSecsStr, privateData);
-        if (tr.starttime != 0)
-        {
-            tr.numberOfFrames++;
-            tr.sizeOfFrames += frameSize;
-        }
 
+        if (checkspsOrpps(frameSize, avg_qp)==false)
+        {
+            if (hasIframe)
+            {
+                addItemToTable(codecName,"P",avgqp,videoSize,uSecsStr, privateData);
+            }
+            if (tr.starttime != 0)
+            {
+                tr.numberOfFrames++;
+                tr.sizeOfFrames += frameSize;
+            }
+        }
     }
     free(frameData);
     av_packet_unref(&packet);
