@@ -287,15 +287,18 @@ void onFrameArrival(unsigned char *videoData, const char *codecName, unsigned fr
     }
     else
     {
-        if (hasIframe)
+        if (checkspsOrpps(codecName, videoData) == false)
         {
-            if (checkspsOrpps(codecName, videoData) == false)
-                addItemToTable(codecName,"P",avgqp,videoSize,uSecsStr, privateData);
-        }
-        if (tr.starttime != 0&& checkspsOrpps(codecName, videoData) == false )
-        {
-            tr.numberOfFrames++;
-            tr.sizeOfFrames += frameSize;
+            if (hasIframe)
+            {
+
+                    addItemToTable(codecName,"P",avgqp,videoSize,uSecsStr, privateData);
+            }
+            if (tr.starttime != 0)
+            {
+                tr.numberOfFrames++;
+                tr.sizeOfFrames += frameSize;
+            }
         }
 
     }
