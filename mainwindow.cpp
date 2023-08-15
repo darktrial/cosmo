@@ -13,7 +13,7 @@ extern int ffpg_get_minqp();
 extern int ffpg_get_maxqp();
 extern double ffpg_get_avgqp();
 }
-#define COSMOVERSION "1.0.5"
+#define COSMOVERSION "1.0.6"
 #define NUMBER_OF_STATICS 5
 #define lengthOfTime    32
 #define lengthOfSize    32
@@ -184,11 +184,19 @@ void addItemToTable(const char *codecName, const char *frameType, const char *av
         ui->tableWidget->removeRow(1);
 }
 
-bool checkspsOrpps(unsigned frameSize, double avg_qp)
+bool checkspsOrpps(const char *codecName, unsigned char *videoData)
 {
-    if (avg_qp==0)
+    int nal_unit_type;
+    if (strcmp(codecName,"H264")==0)
     {
-        return true;
+        nal_unit_type = videoData[0] & 0x1f;
+        if (nal_unit_type==7 || nal_unit_type ==8) return true;
+    }
+    if (strcmp(codecName,"H265")==0)
+    {
+        nal_unit_type=(videoData[0]& 0x7E)>>1;
+        if (nal_unit_type==32 || nal_unit_type ==33 || nal_unit_type ==34)
+            return true;
     }
     return false;
 }
@@ -279,19 +287,17 @@ void onFrameArrival(unsigned char *videoData, const char *codecName, unsigned fr
     }
     else
     {
-
-        if (checkspsOrpps(frameSize, avg_qp)==false)
+        if (hasIframe)
         {
-            if (hasIframe)
-            {
+            if (checkspsOrpps(codecName, videoData) == false)
                 addItemToTable(codecName,"P",avgqp,videoSize,uSecsStr, privateData);
-            }
-            if (tr.starttime != 0)
-            {
-                tr.numberOfFrames++;
-                tr.sizeOfFrames += frameSize;
-            }
         }
+        if (tr.starttime != 0&& checkspsOrpps(codecName, videoData) == false )
+        {
+            tr.numberOfFrames++;
+            tr.sizeOfFrames += frameSize;
+        }
+
     }
     free(frameData);
     av_packet_unref(&packet);
