@@ -13,7 +13,7 @@ extern int ffpg_get_minqp();
 extern int ffpg_get_maxqp();
 extern double ffpg_get_avgqp();
 }
-#define COSMOVERSION "1.0.6"
+#define COSMOVERSION "1.0.7"
 #define NUMBER_OF_STATICS 5
 #define lengthOfTime    32
 #define lengthOfSize    32
@@ -122,6 +122,9 @@ MainWindow::MainWindow(QWidget *parent)
     vheading->setVisible(false);
     ui->tableWidget->setColumnCount(5);
     ui->tableWidget->setHorizontalHeaderLabels(headers);
+    ui->tableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    ui->tableWidget->setSelectionMode(QAbstractItemView::NoSelection);
+    ui->tableWidget->setFocusPolicy(Qt::NoFocus);
 
     if (QFile("rtsp_client_def.ini").exists())
     {
@@ -181,7 +184,12 @@ void addItemToTable(const char *codecName, const char *frameType, const char *av
     }
 
     if (ui->tableWidget->rowCount()>150)
-        ui->tableWidget->removeRow(1);
+    {
+        QTableWidgetItem *item = ui->tableWidget->item(0, 0);
+        if (item)
+            ui->tableWidget->removeRow(0);
+    }
+    //qDebug("row count:%d",ui->tableWidget->rowCount());
 }
 
 bool checkspsOrpps(const char *codecName, unsigned char *videoData)
