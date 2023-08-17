@@ -13,7 +13,7 @@ extern int ffpg_get_minqp();
 extern int ffpg_get_maxqp();
 extern double ffpg_get_avgqp();
 }
-#define COSMOVERSION "1.0.7"
+#define COSMOVERSION "1.0.8"
 #define NUMBER_OF_STATICS 5
 #define lengthOfTime    32
 #define lengthOfSize    32
