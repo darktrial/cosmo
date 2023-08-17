@@ -18,6 +18,7 @@ extern double ffpg_get_avgqp();
 #define lengthOfTime    32
 #define lengthOfSize    32
 #define legnthofStatics 64
+#define MAX_ROWS 150
 AVCodecContext *pCodecCtx = NULL;
 rtspPlayer *player=NULL;
 bool hasIframe = false;
@@ -183,13 +184,12 @@ void addItemToTable(const char *codecName, const char *frameType, const char *av
             ui->tableWidget->item(ui->tableWidget->rowCount()-1,j)->setBackground(green);
     }
 
-    if (ui->tableWidget->rowCount()>150)
+    if (ui->tableWidget->rowCount()>MAX_ROWS)
     {
-        QTableWidgetItem *item = ui->tableWidget->item(0, 0);
-        if (item)
-            ui->tableWidget->removeRow(0);
+        ui->tableWidget->removeRow(0);
     }
-    //qDebug("row count:%d",ui->tableWidget->rowCount());
+    ui->tableWidget->selectRow(ui->tableWidget->rowCount()-1);
+    //qDebug("row count:%d",ui->tableWidget->currentRow());
 }
 
 bool checkspsOrpps(const char *codecName, unsigned char *videoData)
