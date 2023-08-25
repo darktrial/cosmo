@@ -13,8 +13,8 @@ extern int ffpg_get_minqp();
 extern int ffpg_get_maxqp();
 extern double ffpg_get_avgqp();
 }
-#define COSMOVERSION "1.0.8"
-#define NUMBER_OF_STATICS 5
+#define COSMOVERSION "1.0.9"
+#define COLUMN_COUNT 6
 #define lengthOfTime    32
 #define lengthOfSize    32
 #define legnthofStatics 64
@@ -115,13 +115,13 @@ MainWindow::MainWindow(QWidget *parent)
     , ui(new Ui::MainWindow)
 {
     QStringList headers;
-    headers << "Codec" << "Frame type" << "Avg QP" << "Frame size"<<"Presentation Time";
+    headers << "Codec" << "Frame type" << "Avg QP" << "Frame size"<<"Arrival Time"<<"Presentation Time";
     ui->setupUi(this);
     QHeaderView *hheading=ui->tableWidget->horizontalHeader();
     QHeaderView *vheading=ui->tableWidget->verticalHeader();
     hheading->setSectionResizeMode(QHeaderView::Stretch);
     vheading->setVisible(false);
-    ui->tableWidget->setColumnCount(5);
+    ui->tableWidget->setColumnCount(COLUMN_COUNT);
     ui->tableWidget->setHorizontalHeaderLabels(headers);
     ui->tableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
     ui->tableWidget->setSelectionMode(QAbstractItemView::NoSelection);
@@ -152,7 +152,7 @@ MainWindow::~MainWindow()
     delete ui;
 }
 
-void addItemToTable(const char *codecName, const char *frameType, const char *avgqp, const char *frameSize, const char *presetationTime, void *privateData)
+void addItemToTable(const char *codecName, const char *frameType, const char *avgqp, const char *frameSize, const char* arrivalTime, const char *presetationTime, void *privateData)
 {
 
 
@@ -169,6 +169,8 @@ void addItemToTable(const char *codecName, const char *frameType, const char *av
     codec->setTextAlignment(Qt::AlignCenter);
     QTableWidgetItem *frame_size=new QTableWidgetItem(frameSize);
     codec->setTextAlignment(Qt::AlignCenter);
+    QTableWidgetItem *arrival_time=new QTableWidgetItem(arrivalTime);
+    codec->setTextAlignment(Qt::AlignCenter);
     QTableWidgetItem *presentation_time=new QTableWidgetItem(presetationTime);
     codec->setTextAlignment(Qt::AlignCenter);
 
@@ -176,12 +178,16 @@ void addItemToTable(const char *codecName, const char *frameType, const char *av
     ui->tableWidget->setItem(ui->tableWidget->rowCount()-1,1,frame_type);
     ui->tableWidget->setItem(ui->tableWidget->rowCount()-1,2,frame_qp);
     ui->tableWidget->setItem(ui->tableWidget->rowCount()-1,3,frame_size);
-    ui->tableWidget->setItem(ui->tableWidget->rowCount()-1,4,presentation_time);
+    ui->tableWidget->setItem(ui->tableWidget->rowCount()-1,4,arrival_time);
+    ui->tableWidget->setItem(ui->tableWidget->rowCount()-1,5,presentation_time);
 
     if (strcmp("I",frameType)==0)
     {
-        for (int j=0;j<NUMBER_OF_STATICS;j++)
-            ui->tableWidget->item(ui->tableWidget->rowCount()-1,j)->setBackground(green);
+        for (int j=0;j<COLUMN_COUNT;j++)
+        {
+            if (strcmp(codecName,"JPEG") != 0)
+                ui->tableWidget->item(ui->tableWidget->rowCount()-1,j)->setBackground(green);
+        }
     }
 
     if (ui->tableWidget->rowCount()>MAX_ROWS)
@@ -189,7 +195,6 @@ void addItemToTable(const char *codecName, const char *frameType, const char *av
         ui->tableWidget->removeRow(0);
     }
     ui->tableWidget->selectRow(ui->tableWidget->rowCount()-1);
-    //qDebug("row count:%d",ui->tableWidget->currentRow());
 }
 
 bool checkspsOrpps(const char *codecName, unsigned char *videoData)
@@ -215,6 +220,7 @@ void onFrameArrival(unsigned char *videoData, const char *codecName, unsigned fr
     char videoSize[lengthOfSize];
     char avgqp[lengthOfSize];
     char statics[legnthofStatics];
+    char arrivalTime[lengthOfTime];
     u_int8_t start_code[4] = {0x00, 0x00, 0x00, 0x01};
     u_int8_t *frameData;
     AVPacket packet;
@@ -224,7 +230,9 @@ void onFrameArrival(unsigned char *videoData, const char *codecName, unsigned fr
     double avg_qp = 0;
     bool isIframe = false;
     Ui::MainWindow *ui=(Ui::MainWindow *)privateData;
-
+    double frameArrivalTime = getCurrentTimeMicroseconds()/1000000.0;
+    snprintf(arrivalTime,lengthOfTime,"%.3f",frameArrivalTime);
+    //qDebug("frame arrival time %.3f",frameArrivalTime);
     if (strcmp(codecName, "JPEG") == 0 || strcmp(codecName, "H264") == 0 || strcmp(codecName, "H265") == 0)
     {
         snprintf(uSecsStr, lengthOfTime, "%d.%06u",  (int)presentationTime.tv_sec, (unsigned)presentationTime.tv_usec);
@@ -255,7 +263,7 @@ void onFrameArrival(unsigned char *videoData, const char *codecName, unsigned fr
         }
         tr.numberOfFrames++;
         tr.sizeOfFrames+=frameSize;
-        addItemToTable("JPEG","I","NA",videoSize,uSecsStr, privateData);
+        addItemToTable("JPEG","I","NA",videoSize,arrivalTime, uSecsStr, privateData);
         return;
     }
     frameData = (u_int8_t *)malloc(frameSize + 4);
@@ -272,7 +280,7 @@ void onFrameArrival(unsigned char *videoData, const char *codecName, unsigned fr
                   << " size:" << frameSize << " bytes "
                   << "presentation time:" << (int)presentationTime.tv_sec << "." << uSecsStr << "\n";*/
         hasIframe=true;
-        addItemToTable(codecName,"I", avgqp,videoSize,uSecsStr, privateData);
+        addItemToTable(codecName,"I", avgqp,videoSize,arrivalTime, uSecsStr, privateData);
         if (tr.starttime == 0)
         {
             tr.starttime = getCurrentTimeMicroseconds();
@@ -300,7 +308,7 @@ void onFrameArrival(unsigned char *videoData, const char *codecName, unsigned fr
             if (hasIframe)
             {
 
-                    addItemToTable(codecName,"P",avgqp,videoSize,uSecsStr, privateData);
+                    addItemToTable(codecName,"P",avgqp,videoSize,arrivalTime, uSecsStr, privateData);
             }
             if (tr.starttime != 0)
             {
@@ -371,7 +379,14 @@ void MainWindow::on_startButton_clicked()
         player=NULL;
         ui->statusbar->showMessage("RTSP connection failed");
     }
-    else ui->startButton->setEnabled(false);
+    else
+    {
+        ui->startButton->setEnabled(false);
+        ui->overTCPCheck->setEnabled(false);
+        ui->urlText->setEnabled(false);
+        ui->usernameText->setEnabled(false);
+        ui->passwordText->setEnabled(false);
+    }
 }
 
 
@@ -411,6 +426,10 @@ void MainWindow::on_stopButton_clicked()
     }
     player=NULL;
     ui->startButton->setEnabled(true);
+    ui->overTCPCheck->setEnabled(true);
+    ui->urlText->setEnabled(true);
+    ui->usernameText->setEnabled(true);
+    ui->passwordText->setEnabled(true);
     if (pCodecCtx != NULL)
         avcodec_free_context(&pCodecCtx);
 }
