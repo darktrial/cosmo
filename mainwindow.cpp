@@ -5,6 +5,7 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 #include "rtspClientHelper.hh"
+#include "tsq.hh"
 extern "C"
 {
 #include "ffmpeg/include/libavformat/avformat.h"
@@ -22,6 +23,7 @@ extern double ffpg_get_avgqp();
 AVCodecContext *pCodecCtx = NULL;
 rtspPlayer *player=NULL;
 bool hasIframe = false;
+
 typedef struct _timeRecords
 {
     long long starttime;
@@ -30,6 +32,24 @@ typedef struct _timeRecords
     int sizeOfFrames;
 } timeRecords;
 timeRecords tr;
+
+class staticsObj
+{
+public:
+    staticsObj()
+    {
+        videoData=NULL;
+        memset(codecName, 0, lengthOfSize);
+    }
+    unsigned char *videoData;
+    char codecName[lengthOfSize];
+    unsigned frameSize;
+    unsigned numTruncatedBytes;
+    struct timeval presentationTime;
+    double frameArrivalTime;
+    void *privateData;
+};
+threadSafeQueue<staticsObj> tsq;
 
 void getFrameStatics(const char *codecName, AVPacket *packet, bool &isIframe, int &min_qp, int &max_qp, double &avg_qp)
 {
@@ -109,49 +129,6 @@ long long getCurrentTimeMicroseconds()
     return (long long)currentTime.tv_sec * 1000000LL + currentTime.tv_usec;
 #endif
 }
-
-MainWindow::MainWindow(QWidget *parent)
-    : QMainWindow(parent)
-    , ui(new Ui::MainWindow)
-{
-    QStringList headers;
-    headers << "Codec" << "Frame type" << "Avg QP" << "Frame size"<<"Arrival Time"<<"Presentation Time";
-    ui->setupUi(this);
-    QHeaderView *hheading=ui->tableWidget->horizontalHeader();
-    QHeaderView *vheading=ui->tableWidget->verticalHeader();
-    hheading->setSectionResizeMode(QHeaderView::Stretch);
-    vheading->setVisible(false);
-    ui->tableWidget->setColumnCount(COLUMN_COUNT);
-    ui->tableWidget->setHorizontalHeaderLabels(headers);
-    ui->tableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
-    ui->tableWidget->setSelectionMode(QAbstractItemView::NoSelection);
-    ui->tableWidget->setFocusPolicy(Qt::NoFocus);
-
-    if (QFile("rtsp_client_def.ini").exists())
-    {
-        QSettings settings("rtsp_client_def.ini", QSettings::IniFormat);
-        QString filename=settings.value("current_config","").toString();
-        QSettings rtspSetting(filename,QSettings::IniFormat);
-        QString rtspUrl=rtspSetting.value("rtsp_url","").toString();
-        QString username=rtspSetting.value("username","").toString();
-        QString password=rtspSetting.value("password","").toString();
-        ui->urlText->setText(rtspUrl);
-        ui->usernameText->setText(username);
-        ui->passwordText->setText(password);
-    }
-    else ui->statusbar->showMessage("config not found");
-    setWindowIcon(QIcon(":/icons/cosmo.ico"));
-    QCoreApplication::setApplicationVersion(COSMOVERSION);
-    QString appversion="COSMO Version "+QString(COSMOVERSION);
-    setWindowTitle(appversion);
-
-}
-
-MainWindow::~MainWindow()
-{
-    delete ui;
-}
-
 void addItemToTable(const char *codecName, const char *frameType, const char *avgqp, const char *frameSize, const char* arrivalTime, const char *presetationTime, void *privateData)
 {
 
@@ -214,7 +191,7 @@ bool checkspsOrpps(const char *codecName, unsigned char *videoData)
     return false;
 }
 
-void onFrameArrival(unsigned char *videoData, const char *codecName, unsigned frameSize, unsigned numTruncatedBytes, struct timeval presentationTime, void *privateData)
+void processFrameData(unsigned char *videoData, const char *codecName, unsigned frameSize, unsigned numTruncatedBytes, struct timeval presentationTime, double frameArrivalTime, void *privateData)
 {
     char uSecsStr[lengthOfTime];
     char videoSize[lengthOfSize];
@@ -230,12 +207,13 @@ void onFrameArrival(unsigned char *videoData, const char *codecName, unsigned fr
     double avg_qp = 0;
     bool isIframe = false;
     Ui::MainWindow *ui=(Ui::MainWindow *)privateData;
-    double frameArrivalTime = getCurrentTimeMicroseconds()/1000000.0;
+
     snprintf(arrivalTime,lengthOfTime,"%.3f",frameArrivalTime);
     //qDebug("frame arrival time %.3f",frameArrivalTime);
+    //qDebug("codeName %s",codecName);
     if (strcmp(codecName, "JPEG") == 0 || strcmp(codecName, "H264") == 0 || strcmp(codecName, "H265") == 0)
     {
-        snprintf(uSecsStr, lengthOfTime, "%d.%06u",  (int)presentationTime.tv_sec, (unsigned)presentationTime.tv_usec);
+        snprintf(uSecsStr, lengthOfTime, "%d.%03u",  (int)presentationTime.tv_sec, (unsigned)presentationTime.tv_usec);
         snprintf(videoSize,lengthOfSize,"%d", frameSize);
     }
     else return;
@@ -308,7 +286,7 @@ void onFrameArrival(unsigned char *videoData, const char *codecName, unsigned fr
             if (hasIframe)
             {
 
-                    addItemToTable(codecName,"P",avgqp,videoSize,arrivalTime, uSecsStr, privateData);
+                addItemToTable(codecName,"P",avgqp,videoSize,arrivalTime, uSecsStr, privateData);
             }
             if (tr.starttime != 0)
             {
@@ -322,6 +300,76 @@ void onFrameArrival(unsigned char *videoData, const char *codecName, unsigned fr
     av_packet_unref(&packet);
 }
 
+void onFrameArrival(unsigned char *videoData, const char *codecName, unsigned frameSize, unsigned numTruncatedBytes, struct timeval presentationTime, void *privateData)
+{
+    staticsObj t;
+
+    t.videoData =(unsigned char *)malloc(frameSize);
+    t.frameArrivalTime = getCurrentTimeMicroseconds()/1000000.0;
+    memcpy(t.videoData, videoData, frameSize);
+    t.frameSize = frameSize;
+    t.privateData=privateData;
+    snprintf(t.codecName,lengthOfSize,"%s",codecName);
+    t.numTruncatedBytes=numTruncatedBytes;
+    memcpy(&t.presentationTime, &presentationTime, sizeof(struct timeval));
+    tsq.push(t);
+
+}
+
+void processQueue(threadSafeQueue<staticsObj> &tsq)
+{
+    staticsObj t;
+    while (true)
+    {
+        tsq.wait_and_pop(t);
+        processFrameData(t.videoData, t.codecName, t.frameSize, t.numTruncatedBytes, t.presentationTime, t.frameArrivalTime, t.privateData);
+        if (t.videoData)
+            free(t.videoData);
+    }
+}
+
+MainWindow::MainWindow(QWidget *parent)
+    : QMainWindow(parent)
+    , ui(new Ui::MainWindow)
+{
+    QStringList headers;
+    headers << "Codec" << "Frame type" << "Avg QP" << "Frame size"<<"Arrival Time"<<"Presentation Time";
+    ui->setupUi(this);
+    QHeaderView *hheading=ui->tableWidget->horizontalHeader();
+    QHeaderView *vheading=ui->tableWidget->verticalHeader();
+    hheading->setSectionResizeMode(QHeaderView::Stretch);
+    vheading->setVisible(false);
+    ui->tableWidget->setColumnCount(COLUMN_COUNT);
+    ui->tableWidget->setHorizontalHeaderLabels(headers);
+    ui->tableWidget->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    ui->tableWidget->setSelectionMode(QAbstractItemView::NoSelection);
+    ui->tableWidget->setFocusPolicy(Qt::NoFocus);
+
+    if (QFile("rtsp_client_def.ini").exists())
+    {
+        QSettings settings("rtsp_client_def.ini", QSettings::IniFormat);
+        QString filename=settings.value("current_config","").toString();
+        QSettings rtspSetting(filename,QSettings::IniFormat);
+        QString rtspUrl=rtspSetting.value("rtsp_url","").toString();
+        QString username=rtspSetting.value("username","").toString();
+        QString password=rtspSetting.value("password","").toString();
+        ui->urlText->setText(rtspUrl);
+        ui->usernameText->setText(username);
+        ui->passwordText->setText(password);
+    }
+    else ui->statusbar->showMessage("config not found");
+    setWindowIcon(QIcon(":/icons/cosmo.ico"));
+    QCoreApplication::setApplicationVersion(COSMOVERSION);
+    QString appversion="COSMO Version "+QString(COSMOVERSION);
+    setWindowTitle(appversion);
+    std::thread t1(processQueue, std::ref(tsq));
+    t1.detach();
+}
+
+MainWindow::~MainWindow()
+{
+    delete ui;
+}
 
 void onConnectionSetup(char *codecName, void *privateData)
 {
