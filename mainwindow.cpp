@@ -13,7 +13,7 @@ extern int ffpg_get_minqp();
 extern int ffpg_get_maxqp();
 extern double ffpg_get_avgqp();
 }
-#define COSMOVERSION "1.0.9"
+#define COSMOVERSION "1.1.0"
 #define COLUMN_COUNT 6
 #define lengthOfTime    32
 #define lengthOfSize    32
@@ -164,15 +164,15 @@ void addItemToTable(const char *codecName, const char *frameType, const char *av
     QTableWidgetItem *codec=new QTableWidgetItem(codecName);
     codec->setTextAlignment(Qt::AlignCenter);
     QTableWidgetItem *frame_type=new QTableWidgetItem(frameType);
-    codec->setTextAlignment(Qt::AlignCenter);
+    frame_type->setTextAlignment(Qt::AlignCenter);
     QTableWidgetItem *frame_qp=new QTableWidgetItem(avgqp);
-    codec->setTextAlignment(Qt::AlignCenter);
+    frame_qp->setTextAlignment(Qt::AlignCenter);
     QTableWidgetItem *frame_size=new QTableWidgetItem(frameSize);
-    codec->setTextAlignment(Qt::AlignCenter);
+    frame_size->setTextAlignment(Qt::AlignCenter);
     QTableWidgetItem *arrival_time=new QTableWidgetItem(arrivalTime);
-    codec->setTextAlignment(Qt::AlignCenter);
+    arrival_time->setTextAlignment(Qt::AlignCenter);
     QTableWidgetItem *presentation_time=new QTableWidgetItem(presetationTime);
-    codec->setTextAlignment(Qt::AlignCenter);
+    presentation_time->setTextAlignment(Qt::AlignCenter);
 
     ui->tableWidget->setItem(ui->tableWidget->rowCount()-1,0,codec);
     ui->tableWidget->setItem(ui->tableWidget->rowCount()-1,1,frame_type);
@@ -194,7 +194,6 @@ void addItemToTable(const char *codecName, const char *frameType, const char *av
     {
         ui->tableWidget->removeRow(0);
     }
-    ui->tableWidget->selectRow(ui->tableWidget->rowCount()-1);
 }
 
 bool checkspsOrpps(const char *codecName, unsigned char *videoData)
@@ -235,8 +234,8 @@ void onFrameArrival(unsigned char *videoData, const char *codecName, unsigned fr
     //qDebug("frame arrival time %.3f",frameArrivalTime);
     if (strcmp(codecName, "JPEG") == 0 || strcmp(codecName, "H264") == 0 || strcmp(codecName, "H265") == 0)
     {
-        snprintf(uSecsStr, lengthOfTime, "%d.%06u",  (int)presentationTime.tv_sec, (unsigned)presentationTime.tv_usec);
-        snprintf(videoSize,lengthOfSize,"%d", frameSize);
+        snprintf(uSecsStr, lengthOfTime, "%u.%03u",  (int)presentationTime.tv_sec, (unsigned)presentationTime.tv_usec/1000);
+        snprintf(videoSize,lengthOfSize,"%u", frameSize);
     }
     else return;
 
