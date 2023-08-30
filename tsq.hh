@@ -2,18 +2,18 @@
 #define TSQ_HH
 #include <string.h>
 #include <iostream>
-#include <queue>
 #include <atomic>
 #include <mutex>
 #include <condition_variable>
 #include <thread>
+#include <deque>
 
 template <typename T>
 class threadSafeQueue
 {
     std::mutex queueCondMutex;
     std::mutex processQueueMutex;
-    std::queue<T> queue;
+    std::deque<T> queue;
     bool condQueue;
     std::condition_variable handleQueueCond;
     void notifyNewData()
@@ -26,9 +26,11 @@ class threadSafeQueue
     {
         std::unique_lock<std::mutex> lock(queueCondMutex);
         while (!condQueue)
-            handleQueueCond.wait(lock, [&]{return condQueue == true; });
+            handleQueueCond.wait(lock, [&]
+                                 { return condQueue == true; });
         condQueue = false;
     }
+
 public:
     threadSafeQueue()
     {
@@ -40,7 +42,7 @@ public:
     void push(T const &data)
     {
         std::lock_guard<std::mutex> lock(processQueueMutex);
-        queue.push(data);
+        queue.push_back(data);
         notifyNewData();
     }
     bool try_pop(T &popped_value)
@@ -51,16 +53,15 @@ public:
         }
         std::lock_guard<std::mutex> lock(processQueueMutex);
         popped_value = queue.front();
-        queue.pop();
+        queue.pop_front();
+        queue.shrink_to_fit();
         return true;
     }
-    void wait_and_pop(T &popped_value)
+    void wait_available()
     {
         waitNewData();
-        std::lock_guard<std::mutex> lock(processQueueMutex);
-        popped_value = queue.front();
-        queue.pop();
     }
 };
+
 
 #endif // TSQ_HH

@@ -19,6 +19,7 @@ extern double ffpg_get_avgqp();
 #define lengthOfTime    32
 #define lengthOfSize    32
 #define legnthofStatics 64
+#define MAX_FRAME_SIZE 1048576
 #define MAX_ROWS 150
 AVCodecContext *pCodecCtx = NULL;
 rtspPlayer *player=NULL;
@@ -38,10 +39,15 @@ class staticsObj
 public:
     staticsObj()
     {
-        videoData=NULL;
+        memset(videoData, 0, MAX_FRAME_SIZE);
         memset(codecName, 0, lengthOfSize);
+        frameSize = 0;
+        numTruncatedBytes = 0;
+        memset(&presentationTime,0,sizeof(struct timeval));
+        privateData=NULL;
+        frameArrivalTime = 0;
     }
-    unsigned char *videoData;
+    unsigned char videoData[MAX_FRAME_SIZE];
     char codecName[lengthOfSize];
     unsigned frameSize;
     unsigned numTruncatedBytes;
@@ -198,8 +204,9 @@ void processFrameData(unsigned char *videoData, const char *codecName, unsigned 
     char avgqp[lengthOfSize];
     char statics[legnthofStatics];
     char arrivalTime[lengthOfTime];
-    u_int8_t start_code[4] = {0x00, 0x00, 0x00, 0x01};
-    u_int8_t *frameData;
+    //u_int8_t start_code[4] = {0x00, 0x00, 0x00, 0x01};
+    //u_int8_t *frameData;
+    //unsigned char frameData[MAX_FRAME_SIZE];
     AVPacket packet;
     int min_qp = 0;
     int max_qp = 0;
@@ -244,11 +251,11 @@ void processFrameData(unsigned char *videoData, const char *codecName, unsigned 
         addItemToTable("JPEG","I","NA",videoSize,arrivalTime, uSecsStr, privateData);
         return;
     }
-    frameData = (u_int8_t *)malloc(frameSize + 4);
-    memcpy(frameData, start_code, 4);
-    memcpy(frameData + 4, videoData, frameSize);
+    //frameData = (u_int8_t *)malloc(frameSize + 4);
+    //memcpy(frameData, start_code, 4);
+    //memcpy(frameData + 4, videoData, frameSize);
     av_new_packet(&packet, frameSize + 4);
-    packet.data = frameData;
+    packet.data = videoData;//frameData;
     packet.size = frameSize + 4;
     getFrameStatics(codecName,&packet, isIframe, min_qp, max_qp, avg_qp);
     snprintf(avgqp,lengthOfSize,"%.2f",avg_qp);
@@ -281,7 +288,7 @@ void processFrameData(unsigned char *videoData, const char *codecName, unsigned 
     }
     else
     {
-        if (checkspsOrpps(codecName, videoData) == false)
+        if (checkspsOrpps(codecName, videoData+4) == false)
         {
             if (hasIframe)
             {
@@ -296,17 +303,23 @@ void processFrameData(unsigned char *videoData, const char *codecName, unsigned 
         }
 
     }
-    free(frameData);
+    //free(frameData);
     av_packet_unref(&packet);
 }
 
 void onFrameArrival(unsigned char *videoData, const char *codecName, unsigned frameSize, unsigned numTruncatedBytes, struct timeval presentationTime, void *privateData)
 {
     staticsObj t;
+    u_int8_t start_code[4] = {0x00, 0x00, 0x00, 0x01};
 
-    t.videoData =(unsigned char *)malloc(frameSize);
+    if (frameSize > MAX_FRAME_SIZE) return;
     t.frameArrivalTime = getCurrentTimeMicroseconds()/1000000.0;
-    memcpy(t.videoData, videoData, frameSize);
+    if (strcmp(codecName,"JPEG")!=0)
+    {
+        memcpy(t.videoData, start_code, 4);
+        memcpy(t.videoData + 4, videoData, frameSize);
+    }
+    else memcpy(t.videoData, videoData, frameSize);
     t.frameSize = frameSize;
     t.privateData=privateData;
     snprintf(t.codecName,lengthOfSize,"%s",codecName);
@@ -321,10 +334,11 @@ void processQueue(threadSafeQueue<staticsObj> &tsq)
     staticsObj t;
     while (true)
     {
-        tsq.wait_and_pop(t);
-        processFrameData(t.videoData, t.codecName, t.frameSize, t.numTruncatedBytes, t.presentationTime, t.frameArrivalTime, t.privateData);
-        if (t.videoData)
-            free(t.videoData);
+        tsq.wait_available();
+        while (tsq.try_pop(t))
+        {
+            processFrameData(t.videoData, t.codecName, t.frameSize, t.numTruncatedBytes, t.presentationTime, t.frameArrivalTime, t.privateData);
+        }
     }
 }
 
