@@ -13,7 +13,7 @@ extern int ffpg_get_minqp();
 extern int ffpg_get_maxqp();
 extern double ffpg_get_avgqp();
 }
-#define COSMOVERSION "1.1.0"
+#define COSMOVERSION "1.1.1"
 #define COLUMN_COUNT 6
 #define lengthOfTime    32
 #define lengthOfSize    32
@@ -168,11 +168,11 @@ void addItemToTable(const char *codecName, const char *frameType, const char *av
     QTableWidgetItem *frame_qp=new QTableWidgetItem(avgqp);
     frame_qp->setTextAlignment(Qt::AlignCenter);
     QTableWidgetItem *frame_size=new QTableWidgetItem(frameSize);
-    frame_size->setTextAlignment(Qt::AlignCenter);
+    //frame_size->setTextAlignment(Qt::AlignCenter);
     QTableWidgetItem *arrival_time=new QTableWidgetItem(arrivalTime);
-    arrival_time->setTextAlignment(Qt::AlignCenter);
+    //arrival_time->setTextAlignment(Qt::AlignCenter);
     QTableWidgetItem *presentation_time=new QTableWidgetItem(presetationTime);
-    presentation_time->setTextAlignment(Qt::AlignCenter);
+    //presentation_time->setTextAlignment(Qt::AlignCenter);
 
     ui->tableWidget->setItem(ui->tableWidget->rowCount()-1,0,codec);
     ui->tableWidget->setItem(ui->tableWidget->rowCount()-1,1,frame_type);
