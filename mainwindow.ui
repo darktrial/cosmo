@@ -148,21 +148,35 @@
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
   <action name="actionOpen">
+   <property name="icon">
+    <iconset resource="cosmo.qrc">
+     <normaloff>:/icons/Open-file.ico</normaloff>:/icons/Open-file.ico</iconset>
+   </property>
    <property name="text">
     <string>open config</string>
    </property>
   </action>
   <action name="actionSave">
+   <property name="icon">
+    <iconset resource="cosmo.qrc">
+     <normaloff>:/icons/Save-file.ico</normaloff>:/icons/Save-file.ico</iconset>
+   </property>
    <property name="text">
     <string>save config</string>
    </property>
   </action>
   <action name="actionsave_statics">
+   <property name="icon">
+    <iconset resource="cosmo.qrc">
+     <normaloff>:/icons/file-export.ico</normaloff>:/icons/file-export.ico</iconset>
+   </property>
    <property name="text">
     <string>save statics</string>
    </property>
   </action>
  </widget>
- <resources/>
+ <resources>
+  <include location="cosmo.qrc"/>
+ </resources>
  <connections/>
 </ui>

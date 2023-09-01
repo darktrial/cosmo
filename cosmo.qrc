@@ -1,6 +1,8 @@
-<!DOCTYPE RCC>
-<RCC version="1.0">
- <qresource>
-     <file>icons/cosmo.ico</file>
- </qresource>
- </RCC>
+<RCC>
+    <qresource prefix="/">
+        <file>icons/cosmo.ico</file>
+        <file>icons/file-export.ico</file>
+        <file>icons/Open-file.ico</file>
+        <file>icons/Save-file.ico</file>
+    </qresource>
+</RCC>

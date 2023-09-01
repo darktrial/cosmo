@@ -19,7 +19,7 @@ extern int ffpg_get_minqp();
 extern int ffpg_get_maxqp();
 extern double ffpg_get_avgqp();
 }
-#define COSMOVERSION "1.1.2"
+#define COSMOVERSION "1.1.3"
 #define COLUMN_COUNT 6
 #define lengthOfTime    32
 #define lengthOfSize    32
@@ -398,6 +398,7 @@ void MainWindow::on_startButton_clicked()
 void MainWindow::on_actionSave_triggered()
 {
     QString filename=QFileDialog::getSaveFileName(NULL, "Save file", "", "*.config");
+    if (filename.isEmpty()) return;
     if (filename.contains(".config") == false)
         filename+=".config";
     QSettings settings(filename, QSettings::IniFormat);
@@ -412,6 +413,7 @@ void MainWindow::on_actionSave_triggered()
 void MainWindow::on_actionOpen_triggered()
 {
     QString filename=QFileDialog::getOpenFileName(NULL, "Open file", "", "*.config");
+    if (filename.isEmpty()) return;
     QSettings rtspSetting(filename,QSettings::IniFormat);
     QString rtspUrl=rtspSetting.value("rtsp_url","").toString();
     QString username=rtspSetting.value("username","").toString();
@@ -445,7 +447,7 @@ void MainWindow::on_actionsave_statics_triggered()
     int i,j,x=2,y=1;
     QXlsx::Document xlsxW;
     QString filename=QFileDialog::getSaveFileName(NULL, "Export statics", "", "*.xlsx");
-
+    if (filename.isEmpty()) return;
     xlsxW.write(1, 1, QString("Codec"));
     xlsxW.write(1, 2, QString("Frame type"));
     xlsxW.write(1, 3, QString("Avg QP"));
