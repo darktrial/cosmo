@@ -132,7 +132,7 @@
      <x>0</x>
      <y>0</y>
      <width>1061</width>
-     <height>26</height>
+     <height>21</height>
     </rect>
    </property>
    <widget class="QMenu" name="menuFile">
@@ -141,6 +141,8 @@
     </property>
     <addaction name="actionOpen"/>
     <addaction name="actionSave"/>
+    <addaction name="separator"/>
+    <addaction name="actionsave_statics"/>
    </widget>
    <addaction name="menuFile"/>
   </widget>
@@ -153,6 +155,11 @@
   <action name="actionSave">
    <property name="text">
     <string>save config</string>
+   </property>
+  </action>
+  <action name="actionsave_statics">
+   <property name="text">
+    <string>save statics</string>
    </property>
   </action>
  </widget>

@@ -24,6 +24,8 @@ private slots:
 
     void on_stopButton_clicked();
 
+    void on_actionsave_statics_triggered();
+
 private:
     Ui::MainWindow *ui;
 };

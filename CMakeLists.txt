@@ -31,7 +31,9 @@ include_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg/include/libavcodec
     ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg/include/libavformat
     ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg/include/
+    ${CMAKE_CURRENT_SOURCE_DIR}/QXlsx/header/
 )
+add_subdirectory(QXlsx)
 link_directories(
     ${CMAKE_CURRENT_SOURCE_DIR}/openssl/lib/
     ${CMAKE_CURRENT_SOURCE_DIR}/ffmpeg/lib/
@@ -92,6 +94,7 @@ target_link_libraries(cosmo PRIVATE Qt${QT_VERSION_MAJOR}::Widgets
     avcodec
     avutil
     bcrypt
+    QXlsx::QXlsx
 )
 
 set_target_properties(cosmo PROPERTIES

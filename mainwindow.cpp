@@ -5,6 +5,12 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 #include "rtspClientHelper.hh"
+#include "xlsxdocument.h"
+#include "xlsxchartsheet.h"
+#include "xlsxcellrange.h"
+#include "xlsxchart.h"
+#include "xlsxrichstring.h"
+#include "xlsxworkbook.h"
 extern "C"
 {
 #include "ffmpeg/include/libavformat/avformat.h"
@@ -13,12 +19,12 @@ extern int ffpg_get_minqp();
 extern int ffpg_get_maxqp();
 extern double ffpg_get_avgqp();
 }
-#define COSMOVERSION "1.1.1"
+#define COSMOVERSION "1.1.2"
 #define COLUMN_COUNT 6
 #define lengthOfTime    32
 #define lengthOfSize    32
 #define legnthofStatics 64
-#define MAX_ROWS 150
+#define MAX_ROWS 2048
 AVCodecContext *pCodecCtx = NULL;
 rtspPlayer *player=NULL;
 bool hasIframe = false;
@@ -431,5 +437,32 @@ void MainWindow::on_stopButton_clicked()
     ui->passwordText->setEnabled(true);
     if (pCodecCtx != NULL)
         avcodec_free_context(&pCodecCtx);
+}
+
+
+void MainWindow::on_actionsave_statics_triggered()
+{
+    int i,j,x=2,y=1;
+    QXlsx::Document xlsxW;
+    QString filename=QFileDialog::getSaveFileName(NULL, "Export statics", "", "*.xlsx");
+
+    xlsxW.write(1, 1, QString("Codec"));
+    xlsxW.write(1, 2, QString("Frame type"));
+    xlsxW.write(1, 3, QString("Avg QP"));
+    xlsxW.write(1, 4, QString("Frame size"));
+    xlsxW.write(1, 5, QString("Arrival Time"));
+    xlsxW.write(1, 6, QString("Presentation Time"));
+
+    for (i=0;i<ui->tableWidget->rowCount();i++)
+    {
+        for (j=0;j<COLUMN_COUNT;j++)
+        {
+            xlsxW.write(x, y, ui->tableWidget->item(i,j)->text());
+            y++;
+        }
+        x++;
+        y=1;
+    }
+    xlsxW.saveAs(filename);
 }
 
