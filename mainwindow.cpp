@@ -19,7 +19,7 @@ extern int ffpg_get_minqp();
 extern int ffpg_get_maxqp();
 extern double ffpg_get_avgqp();
 }
-#define COSMOVERSION "1.1.3"
+#define COSMOVERSION "1.1.4"
 #define COLUMN_COUNT 6
 #define lengthOfTime    32
 #define lengthOfSize    32
@@ -365,6 +365,26 @@ void onConnectionSetup(char *codecName, void *privateData)
     tr.sizeOfFrames = 0;
 }
 
+void disableUIComponent(Ui::MainWindow *ui)
+{
+    ui->startButton->setEnabled(false);
+    ui->overTCPCheck->setEnabled(false);
+    ui->urlText->setEnabled(false);
+    ui->usernameText->setEnabled(false);
+    ui->passwordText->setEnabled(false);
+    ui->actionsave_statics->setEnabled(false);
+}
+
+void enableUIComponent(Ui::MainWindow *ui)
+{
+    ui->startButton->setEnabled(true);
+    ui->overTCPCheck->setEnabled(true);
+    ui->urlText->setEnabled(true);
+    ui->usernameText->setEnabled(true);
+    ui->passwordText->setEnabled(true);
+    ui->actionsave_statics->setEnabled(true);
+}
+
 void MainWindow::on_startButton_clicked()
 {
 
@@ -385,13 +405,7 @@ void MainWindow::on_startButton_clicked()
         ui->statusbar->showMessage("RTSP connection failed");
     }
     else
-    {
-        ui->startButton->setEnabled(false);
-        ui->overTCPCheck->setEnabled(false);
-        ui->urlText->setEnabled(false);
-        ui->usernameText->setEnabled(false);
-        ui->passwordText->setEnabled(false);
-    }
+        disableUIComponent(ui);
 }
 
 
@@ -432,11 +446,7 @@ void MainWindow::on_stopButton_clicked()
         delete player;
     }
     player=NULL;
-    ui->startButton->setEnabled(true);
-    ui->overTCPCheck->setEnabled(true);
-    ui->urlText->setEnabled(true);
-    ui->usernameText->setEnabled(true);
-    ui->passwordText->setEnabled(true);
+    enableUIComponent(ui);
     if (pCodecCtx != NULL)
         avcodec_free_context(&pCodecCtx);
 }
