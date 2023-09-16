@@ -28,6 +28,7 @@ extern double ffpg_get_avgqp();
 AVCodecContext *pCodecCtx = NULL;
 rtspPlayer *player=NULL;
 bool hasIframe = false;
+struct timeval prevPresentationTime;
 typedef struct _timeRecords
 {
     long long starttime;
@@ -202,6 +203,32 @@ void addItemToTable(const char *codecName, const char *frameType, const char *av
     }
 }
 
+void incFramesizeInTable(unsigned frameSize, void *privateData)
+{
+    Ui::MainWindow *ui=(Ui::MainWindow *)privateData;
+    QTableWidgetItem *item = ui->tableWidget->item(ui->tableWidget->rowCount()-1, 3);
+    if (item)
+    {
+        unsigned size=item->text().toUInt();
+        size+=frameSize;
+        item->setText(QString::number(size));
+    }
+}
+
+bool checkSubsequentFrame(struct timeval presentationTime)
+{
+    if (prevPresentationTime.tv_sec == presentationTime.tv_sec && prevPresentationTime.tv_usec == presentationTime.tv_usec)
+    {
+        return true;
+    }
+    else
+    {
+        prevPresentationTime.tv_sec=presentationTime.tv_sec;
+        prevPresentationTime.tv_usec=presentationTime.tv_usec;
+        return false;
+    }
+}
+
 bool checkspsOrpps(const char *codecName, unsigned char *videoData)
 {
     int nal_unit_type;
@@ -271,6 +298,16 @@ void onFrameArrival(unsigned char *videoData, const char *codecName, unsigned fr
         addItemToTable("JPEG","I","NA",videoSize,arrivalTime, uSecsStr, privateData);
         return;
     }
+    //check subsequent frame
+    if (checkspsOrpps(codecName, videoData) == false)
+    {
+        if (checkSubsequentFrame(presentationTime)==true)
+        {
+            incFramesizeInTable(frameSize, privateData);
+            tr.sizeOfFrames += frameSize;
+            return;
+        }
+    }
     frameData = (u_int8_t *)malloc(frameSize + 4);
     memcpy(frameData, start_code, 4);
     memcpy(frameData + 4, videoData, frameSize);
@@ -312,7 +349,6 @@ void onFrameArrival(unsigned char *videoData, const char *codecName, unsigned fr
         {
             if (hasIframe)
             {
-
                     addItemToTable(codecName,"P",avgqp,videoSize,arrivalTime, uSecsStr, privateData);
             }
             if (tr.starttime != 0)
@@ -393,6 +429,9 @@ void MainWindow::on_startButton_clicked()
     std::string url=ui->urlText->toPlainText().toStdString();
     std::string username=ui->usernameText->toPlainText().toStdString();
     std::string password=ui->passwordText->toPlainText().toStdString();
+    //memset(&prevPresentationTime,0, sizeof(struct timeval));
+    prevPresentationTime.tv_sec=0;
+    prevPresentationTime.tv_usec-0;
     hasIframe=false;
     player = new rtspPlayer((void *)ui);
     player->onFrameData = onFrameArrival;
