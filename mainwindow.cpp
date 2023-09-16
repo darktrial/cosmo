@@ -19,7 +19,7 @@ extern int ffpg_get_minqp();
 extern int ffpg_get_maxqp();
 extern double ffpg_get_avgqp();
 }
-#define COSMOVERSION "1.1.4"
+#define COSMOVERSION "1.1.5"
 #define COLUMN_COUNT 6
 #define lengthOfTime    32
 #define lengthOfSize    32
